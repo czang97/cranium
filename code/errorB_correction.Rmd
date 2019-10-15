@@ -24,7 +24,7 @@ library(mosaic)
 # new functions
 ```{r}
 print_one_plot <- function(x = ro_brain_yt_1, title = "Sample Plot"){
-    setwd("/Users/czang/Documents/cranium/sample_plot/correctionB")
+    setwd("/Users/czang/Documents/cranium/sample_plot/correctionB/youtoo_1")
     wd <- getwd()
     png(paste(wd, "/",title, ".png", sep=""), width = 900, height = 300)
     plot2d(x , title = title) #output image with dimension: 900*300
@@ -35,36 +35,37 @@ print_one_plot <- function(x = ro_brain_yt_1, title = "Sample Plot"){
 
 ```{r}
 #access PCA reoriented data for youtoo and wildtype
-ro_brain_ls_yt <- readRDS(file = "/Users/czang/Documents/cranium/Sample/processed_sample/ro_brain_ls_yt.rds")
+ro_brain_ls_yt <- readRDS(file = "/Users/czang/Desktop/processed_sample/ro_brain_ls_yt.rds") 
 
-ro_brain_ls_wt <- readRDS(file = "/Users/czang/Documents/cranium/Sample/processed_sample/ro_brain_ls_wt.rds")
+ro_brain_ls_wt <- readRDS(file = "/Users/czang/Desktop/processed_sample/ro_brain_ls_wt.rds")
 
 #plot all samples 
 #plot_all_sample(x=ro_brain_ls_wt ,type = "wildtype", wd = "/Users/czang/Documents/cranium/")
 #plot_all_sample(x=ro_brain_ls_yt , type = "youtoo", wd = "/Users/czang/Documents/cranium/")
 ```
 
-# start with one sample: youtoo 3
+# start with one sample: youtoo 2
 ```{r}
 #selecting sample from the list
-ro_brain_yt_3 <- ro_brain_ls_yt[[3]]
+#ro_brain_yt_3 <- ro_brain_ls_yt[[3]]
+ro_brain_yt <- ro_brain_ls_yt[[1]]
 
-plot2d(ro_brain_yt_3 , title = "Youtoo Sample #3 - After PCA-step 1") #output image with dimension: 900*300
+plot2d(ro_brain_yt , title = "Youtoo Sample #1 - After PCA-step 1") #output image with dimension: 900*300
 
-print_one_plot(x = ro_brain_yt_3, title = "Youtoo Sample #3 - After PCA-step 1")
+print_one_plot(x = ro_brain_yt, title = "Youtoo Sample #1 - After PCA-step 1")
 ```
 
 #check for error A and make correction
 ```{r}
-is_errorA(ro_brain_yt_3)
+is_errorA(ro_brain_yt)
 
-cA_ro_brain_yt_3 <- correct_errorA(ro_brain_yt_3, threshold.n=0.5)
+cA_ro_brain_yt <- correct_errorA(ro_brain_yt, threshold.n=0.5)
 
-is_errorA(cA_ro_brain_yt_3)
+is_errorA(cA_ro_brain_yt)
 
-plot2d(cA_ro_brain_yt_3 , title = "Youtoo Sample #3 - After correction for errorA-step 2") #output image with dimension: 900*300
+plot2d(cA_ro_brain_yt , title = "Youtoo Sample #2 - After correction for errorA-step 2") #output image with dimension: 900*300
 
-print_one_plot(x = cA_ro_brain_yt_3,  title = "Youtoo Sample #3 - After correction for errorA-step 2")
+print_one_plot(x = cA_ro_brain_yt,  title = "Youtoo Sample #2 - After correction for errorA-step 2")
 ```
 
 # Function: is_errorB
@@ -99,7 +100,10 @@ inside.range(quad.slope_xz, range)
 
 # Function: correct_errorB
 ```{r}
-ro_data <- cA_ro_brain_yt_3
+
+#ro_data <- cA_ro_brain_yt
+
+ro_data <- ro_brain_yt
 type = "youtoo"
 threshold.n=0.5
 r_angle_mpt=1
@@ -113,10 +117,8 @@ quad.coeff = round((summary(ro_model)$coefficients["I(x^2)", "Estimate"]), 4)  #
 message("Beofre rotation, the quadratic coefficient is", " ", quad.coeff, ".")
 
 x.coeff = round((summary(ro_model)$coefficients["x", "Estimate"]), 4)#b
-intercept = round((summary(ro_model)$coefficients["(Intercept)", "Estimate"]), 4) #c
+y_intercept = round((summary(ro_model)$coefficients["(Intercept)", "Estimate"]), 4) #c
 
-# y intercept
-y_intercept <- intercept
 # x intercept
 x_intercept <- (-x.coeff + sqrt(x.coeff^2 - 4* quad.coeff * intercept))/ (2*quad.coeff)
 
@@ -126,9 +128,14 @@ x_intercept <- (-x.coeff + sqrt(x.coeff^2 - 4* quad.coeff * intercept))/ (2*quad
   # vertex <- c(vertex.x, vertex.y)
 
   #slope of the line connecting m and n
-  slope <- abs(y_intercept/x_intercept)
+  if(quad.coeff > 0 ){  #if the quadratic open up (concave up), then the slope of the line is positive
+    slope <- abs(y_intercept/x_intercept)
+  }else {   #if the quadratic open down (concave down), then the slope of the line is negative
+    slope <- -abs(y_intercept/x_intercept)
+  }
+ 
   #slope to angle (radian)
-  rotation_angle_radian <- r_angle_mpt * atan(slope)
+  rotation_angle_radian <- r_angle_mpt * atan(slope)  #r_angle_mpt is a tuning parameter, >1 leads to larger rotation angel
   #radian to degree
   rotation_angle_degree <- rad2deg(rotation_angle_radian)
 
@@ -163,18 +170,24 @@ x_intercept <- (-x.coeff + sqrt(x.coeff^2 - 4* quad.coeff * intercept))/ (2*quad
   return(r.data)
 
   
-cB_cA_ro_brain_yt_3 <- r.data
-
-cB2_cA_ro_brain_yt_3 <- correct_errorB.tbl_brain(cB_cA_ro_brain_yt_3)
-
-cB3_cA_ro_brain_yt_3 <- correct_errorB.tbl_brain(cB2_cA_ro_brain_yt_3)
-
-cB4_cA_ro_brain_yt_3 <- correct_errorB.tbl_brain(cB3_cA_ro_brain_yt_3)
+cB_brain_yt <- r.data
+print_one_plot(x = cB_brain_yt,  title = "Youtoo Sample #1 - After 1 correction for errorB-step 2")
 
 
-plot2d(cB_cA_ro_brain_yt_3 , title = "Youtoo Sample #3 - After correction for errorB-step 3") #output image with dimension: 900*300
+cB2_brain_yt <- correct_errorB.tbl_brain(cB_brain_yt)
+print_one_plot(x = cB2_brain_yt,  title = "Youtoo Sample #1 - After 2 corrections for errorB-step 3")
 
-print_one_plot(x = cB_cA_ro_brain_yt_3,  title = "Youtoo Sample #3 - After correction for errorB-step 3")
+cB3_brain_yt <- correct_errorB.tbl_brain(cB2_brain_yt)
+print_one_plot(x = cB3_brain_yt,  title = "Youtoo Sample #1 - After 3 corrections for errorB-step 4")
+
+
+cB4_brain_yt <- correct_errorB.tbl_brain(cB3_brain_yt)
+print_one_plot(x = cB4_brain_yt,  title = "Youtoo Sample #1 - After 4 corrections for errorB-step 5")
+
+#plot2d(cB4_cA_ro_brain_yt , title = "Youtoo Sample #3 - After correction for errorB-step 3") #output image with dimension: 900*300
+
+
+cB_brain_yt_inf <- correct_errorB.tbl_brain(cB_brain_yt_inf)
 ```
 
 
