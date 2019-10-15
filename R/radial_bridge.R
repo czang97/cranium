@@ -653,6 +653,44 @@ is_z_curve.tbl_brain <- function(data, type="wildtype", threshold.n=0.9){
 }
 
 
+#' @title create rotation matrix
+#' @description creat 3 by 3 rotation matrix for error B correction
+#' @param
+#' @param axis the axis that you are rotating around
+
+#' @export
+#' @examples
+#' degree = 45
+#' radian = deg2rad(degree)
+#' ro_matrix <- create_ro_matrix(radian, axis = "y")
+create_ro_matrix <- function(rotation_angle_radian, axis = "x"){
+  if(axis == "x"){
+    matrix.x <- diag(3)
+    matrix.x[2,2] <- cos(rotation_angle_radian)
+    matrix.x[2,3] <- -sin(rotation_angle_radian)
+    matrix.x[3,2] <- sin(rotation_angle_radian)
+    matrix.x[3,3] <- cos(rotation_angle_radian)
+    message("rotate around x axis")
+    return(matrix.x)
+  } else if (axis == "y"){
+    matrix.x <- diag(3)
+    matrix.x[1,1] <- cos(rotation_angle_radian)
+    matrix.x[1,3] <- sin(rotation_angle_radian)
+    matrix.x[3,1] <- -sin(rotation_angle_radian)
+    matrix.x[3,3] <- cos(rotation_angle_radian)
+    message("rotate around y axis")
+    return(matrix.x)
+  }else if (axis == "z"){
+    matrix.x <- diag(3)
+    matrix.x[1,1] <- cos(rotation_angle_radian)
+    matrix.x[2,1] <- sin(rotation_angle_radian)
+    matrix.x[1,2] <- -sin(rotation_angle_radian)
+    matrix.x[2,2] <- cos(rotation_angle_radian)
+    message("rotate around z axis")
+    return(matrix.x)
+  }
+}
+
 
 #' @title Identify Error B: Curve in yz plane
 #' @description Identify Curve in yz plane
@@ -683,93 +721,107 @@ is_errorB.brain <- function(ro_data, type="wildtype", threshold.n=0.9, ref = "ou
 
 #' @export
 #' @rdname is_errorB
-is_errorB.tbl_brain <- function(ro_data, type="wildtype", threshold.n=0.6, range_ref = "outlier"){
-  # ro_tidy_brain <- data%>%
-  #   reorient()
-  quad_model_xz <- attr(ro_data, "quad_mod_xz") #quadratic model y = x^2 + x
-  quad.slope_xz = round((summary(quad_model_xz)$coefficients["I(x^2)", "Estimate"]), 5)
-  if (range_ref == "outlier"){
-    range <- c(-0.00202, 0.00182)
-  }else if (range_ref == "quantile"){
-    range <- c(-0.00058, 0.00038)
-  }else if (range_ref== "ci"){
-    range <- c(-0.0003206473, 0.0001243682)
-  }
-  if (inside.range(quad.slope_xz, range) == TRUE) {
-    message("Alignment is correct")
+is_errorB.tbl_brain <- function(ro_data, range_ref = "outlier"){
+  quad_model <- attr(ro_data, "quad_mod_xz") #quadratic model y = x^2 + x
+  quad.coef= round((summary(quad_model)$coefficients["I(x^2)", "Estimate"]), 5)
+  if (quad.coef == 0){
+    message("Alignment is correct. There is no curvature in the xz-plane.")
     return(FALSE)
-  } else {
+  }else{
     message("There is a curvature in xz plane")
     return(TRUE)
   }
 }
 
 
+#' @export
+#' @rdname is_errorB
+correct_errorB.tbl_brain <- function(ro_data, r_angle_mpt=1) UseMethod("correct_errorB")
 
 #' @export
 #' @rdname is_errorB
-correct_errorB.tbl_brain <- function(ro_data, type = "wildtype", threshold.n=0.6, r_angle_mpt=1) UseMethod("correct_errorB")
-
-#' @export
-#' @rdname is_errorB
-correct_errorB.tbl_brain <- function(ro_data, type = "wildtype", threshold.n=0.6, r_angle_mpt=1){
+correct_errorB.tbl_brain <- function(ro_data, r_angle_mpt=1){
   ro_data <- add_attr(ro_data)
 
   #extract quadratic model coefficients from xy plane
   ro_model <- attr(ro_data, "quad_mod_xz")
   quad.coeff = round((summary(ro_model)$coefficients["I(x^2)", "Estimate"]), 4)  #a
 
+  if (quad.coeff == 0){
+    message("Beofre rotation, the quadratic coefficient is 0, no need for further correction. Return original data.")
+    return (ro_data)
+  }else{
   message("Beofre rotation, the quadratic coefficient is", " ", quad.coeff, ".")
 
   x.coeff = round((summary(ro_model)$coefficients["x", "Estimate"]), 4)#b
-  intercept = round((summary(ro_model)$coefficients["(Intercept)", "Estimate"]), 4) #c
+  y_intercept = round((summary(ro_model)$coefficients["(Intercept)", "Estimate"]), 4) #c
 
-  # y intercept
-  y_intercept <- intercept
   # x intercept
-  x_intercept <- (-x.coeff + sqrt(x.coeff^2 - 4* quad.coeff * intercept))/ (2*quad.coeff)
-
-  #vertex (x)
-  #  vertex.x <- -x.coeff/(2*quad.coeff)
-  # vertex.y <- quad.coeff * (vertex.x ^ 2) + x.coeff * vertex.x + intercept
-  # vertex <- c(vertex.x, vertex.y)
+  x_intercept <- (-x.coeff + sqrt(x.coeff^2 - 4* quad.coeff * y_intercept))/ (2*quad.coeff)
 
   #slope of the line connecting m and n
   slope <- abs(y_intercept/x_intercept)
+
   #slope to angle (radian)
-  rotation_angle_radian <- r_angle_mpt * atan(slope)
+  rotation_angle_radian <- r_angle_mpt * atan(slope)  #r_angle_mpt is a tuning parameter, >1 leads to larger rotation angel
   #radian to degree
-  rotation_angle_degree <- rad2deg(rotation_angle_radian)
+  #rotation_angle_degree <- rad2deg(rotation_angle_radian)
 
-  matrix.x <- diag(3)
-  matrix.x[2,2] <- cos(rotation_angle_radian)
-  matrix.x[2,3] <- -sin(rotation_angle_radian)
-  matrix.x[3,2] <- sin(rotation_angle_radian)
-  matrix.x[3,3] <- cos(rotation_angle_radian)
 
-  data.matrix<- ro_data %>%
-    select(x,y,z)%>%
-    as.matrix()
+  if(quad.coeff > 0 ){
+    message("quadratic concave up, will perform error B correction")
+    #rotation matrix
+    matrix.x <- create_ro_matrix(rotation_angle_radian, axis = "x")
 
-  data_freq_gray<- ro_data%>%
-    select(Freq,gray_val)
+    data.matrix<- ro_data %>%
+      select(x,y,z)%>%
+      as.matrix()
+    data_freq_gray<- ro_data%>%
+      select(Freq,gray_val)
+    r.data <- data.matrix %*% matrix.x %>%
+      tibble::as_tibble() %>%
+      bind_cols(data_freq_gray)
+    names(r.data) <- names(ro_data)
+    class(r.data) <- append("tbl_brain", class(r.data))
+    r.data <- add_attr(r.data)
 
-  r.data <- data.matrix %*% matrix.x %>%
-    tibble::as_tibble() %>%
-    bind_cols(data_freq_gray)
+    #check the quadratic coefficient after rotation
+    r.ro_model <- attr(r.data, "quad_mod_xz")
+    r.quad.coeff = round((summary(r.ro_model)$coefficients["I(x^2)", "Estimate"]), 4)  #a
+    message("After rotation, the quadratic coefficient is", " ", r.quad.coeff, ".")
 
-  names(r.data) <- names(ro_data)
+    return(r.data)
+  } else if (quad.coeff < 0 ){
+    message("quadratic concave down, will need to perform translation before performing error B correction")
+      ro_data <- ro_data%>%
+        mutate(z = z - y_intercept)  # if y_intercept <0, we translate up, if y intercept >0, we translate down
+    rotation_angle_radian <- -rotation_angle_radian
+    #rotation matrix
+    matrix.x <- create_ro_matrix(rotation_angle_radian, axis = "x")
 
-  class(r.data) <- append("tbl_brain", class(r.data))
+    data.matrix<- ro_data %>%
+      select(x,y,z)%>%
+      as.matrix()
 
-  r.data <- add_attr(r.data)
+    data_freq_gray<- ro_data%>%
+      select(Freq,gray_val)
 
-  #check the quadratic coefficient after rotation
-  r.ro_model <- attr(r.data, "quad_mod_xz")
-  r.quad.coeff = round((summary(r.ro_model)$coefficients["I(x^2)", "Estimate"]), 4)  #a
-  message("After rotation, the quadratic coefficient is", " ", r.quad.coeff, ".")
+    r.data <- data.matrix %*% matrix.x %>%
+      tibble::as_tibble() %>%
+      bind_cols(data_freq_gray)
+    names(r.data) <- names(ro_data)
+    r.data <- r.data%>%
+      mutate(z = z + y_intercept)
+    class(r.data) <- append("tbl_brain", class(r.data))
+    r.data <- add_attr(r.data)
+    #check the quadratic coefficient after rotation
+    r.ro_model <- attr(r.data, "quad_mod_xz")
+    r.quad.coeff = round((summary(r.ro_model)$coefficients["I(x^2)", "Estimate"]), 4)  #a
+    message("After rotation, the quadratic coefficient is", " ", r.quad.coeff, ".")
 
-  return(r.data)
+    return(r.data)
+  }
+  }
 }
 
 
