@@ -31,6 +31,7 @@ print_one_plot <- function(x = ro_brain_yt_1, title = "Sample Plot"){
     dev.off()
 }   
 
+
 calc_quad.coef <- function(x = ro_data){
  ro_data <- add_attr(ro_data)
   quad_model <- attr(ro_data, "quad_mod_xz") #quadratic model y = x^2 + x
@@ -40,6 +41,7 @@ calc_quad.coef <- function(x = ro_data){
   quad.coef = round((summary(ro_model)$coefficients["I(x^2)", "Estimate"]), 4)  #a
   return(quad.coef)
 }
+
 ```
 
 
@@ -65,7 +67,7 @@ plot2d(ro_brain_yt , title = "Youtoo Sample #1 - After PCA-step 1") #output imag
 print_one_plot(x = ro_brain_yt, title = "Youtoo Sample #2 - After PCA-step 1")
 ```
 
-# check for error A and make correction
+#check for error A and make correction
 ```{r}
 is_errorA(ro_brain_yt)
 
@@ -79,6 +81,8 @@ print_one_plot(x = cA_ro_brain_yt,  title = "Youtoo Sample #2 - After correction
 ```
 
 # check for each iteration of the correction
+#Function: correct_errorB
+
 ```{r}
 #ro_data <- cA_ro_brain_yt
 
@@ -111,6 +115,7 @@ print_one_plot(x = cB7_brain_yt,  title = "Youtoo Sample #2 - After 7 correction
 
 is_errorB.tbl_brain(cB8_brain_yt)
 ```
+
 
 
 # build the pipeline
@@ -250,5 +255,20 @@ print_one_plot(x = cB7_brain_yt,  title = "Youtoo Sample #15 - After 7 correctio
 
 is_errorB.tbl_brain(cB8_brain_yt)
 ```
+
+# pipeline
+```{r}
+#start with brain data that is tidied and pca reoriented
+ro_brain_yt <- ro_brain_ls_yt[[2]]
+
+
+pipeline <- function(x = ro_brain_yt){
+  #check for error A
+  is_errorA(ro_brain_yt)
+
+  cA_ro_brain_yt <- correct_errorA(ro_brain_yt, threshold.n=0.5)
+
+}
 ```
+
 

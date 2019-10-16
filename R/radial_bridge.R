@@ -487,7 +487,7 @@ is_errorA.brain<- function(data, type="wildtype", threshold.n = 0.9){
   ro_model <- attr(ro_tidy_brain, "quad_mod_xy")  #model applied on reoriented data
   quad.coef = round((summary(ro_model)$coefficients["I(x^2)", "Estimate"]), 4)
 
-  if (quad.coef < 0) {
+  if (quad.coeff < 0) {
     message("Y Axis is flipped")
     return(TRUE)
   } else{
@@ -838,6 +838,8 @@ correct_errorB.tbl_brain <- function(ro_data, r_angle_mpt=1){
 
 
 
+
+
 #' @title Read in and tidy all raw samples
 #' @description Read in and tidy all samples. You can choose to perform PCA reorientation or not. Note that this function is only for raw data (untidied data).
 #' Function will output a list containing all samples in the type you decide (wildtype or youtoo), in
@@ -985,4 +987,3 @@ pipeline_correctionAB <- function(x = ro_brain_yt, B.correct.n = 8){
     return(x_step1)
   }
 }
-
