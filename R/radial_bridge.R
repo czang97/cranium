@@ -881,6 +881,7 @@ process_all_sample <- function(download = FALSE, local_directory = NA, type = "y
       tidy_brain_ls[[i]] <- file_names[i] %>%
         read_h5() %>%
         tidy.brain(threshold.n = threshold.n)     ##note that we should be able to call the global function tidy
+      message(paste("process", file_names[i], sep=""))
     }
     if (PCA_reorient == FALSE){
       return(tidy_brain_ls)  #if do not perform PCA reorientation, return tidy data
